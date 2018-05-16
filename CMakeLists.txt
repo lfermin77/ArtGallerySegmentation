@@ -46,3 +46,5 @@ find_package( OpenCV REQUIRED )
 add_executable( DisplayImage DisplayImage.cpp )
 target_link_libraries( DisplayImage ${OpenCV_LIBS} )
 
+add_executable( read_poly Read_poly_files.cpp )
+target_link_libraries( read_poly ${OpenCV_LIBS} )
