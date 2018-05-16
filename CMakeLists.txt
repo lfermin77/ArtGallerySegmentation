@@ -1,50 +1,11 @@
 cmake_minimum_required(VERSION 2.8.3)
-project(Root)
-
-#find_package(catkin REQUIRED COMPONENTS
-#  roscpp
-#  rospy
-#  std_msgs
-#  tf
-#  nav_msgs
-#  cv_bridge
-#  image_transport
-#)
+project(Segmentation)
 
 
-
-
-
-#catkin_package(
-#  INCLUDE_DIRS include
-#  LIBRARIES dude_ros
-#  CATKIN_DEPENDS tf
-#  DEPENDS system_lib
-#)
-
-#include_directories(
-#  ${catkin_INCLUDE_DIRS}
-#  ${PROJECT_SOURCE_DIR}/include  
-#)
 
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
 
-
-
-
-######## exploration
-add_executable(root square_root.cpp )
-
-#target_link_libraries(tigre
-#  ${catkin_LIBRARIES}
-# )
-
-
-#add_dependencies(tigre ${catkin_LIBRARIES})
-
 find_package( OpenCV REQUIRED )
-add_executable( DisplayImage DisplayImage.cpp )
-target_link_libraries( DisplayImage ${OpenCV_LIBS} )
 
 add_executable( read_poly Read_poly_files.cpp )
 target_link_libraries( read_poly ${OpenCV_LIBS} )
