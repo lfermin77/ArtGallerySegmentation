@@ -13,6 +13,6 @@ include_directories(
 )
 
 
-add_executable( read_poly src/Read_poly_files.cpp include/poly2contour.cpp)
+add_executable( read_poly src/Read_poly_files.cpp include/poly2contour.cpp include/visibility_graph.cpp)
 
 target_link_libraries( read_poly ${OpenCV_LIBS} )

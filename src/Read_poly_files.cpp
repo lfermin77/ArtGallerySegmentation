@@ -3,7 +3,7 @@
 #include <opencv2/opencv.hpp>
 
 #include "poly2contour.hpp"
-
+#include "visibility_graph.hpp"
 
 
 int main(int argc, char** argv )
@@ -25,8 +25,7 @@ int main(int argc, char** argv )
     int idx = 0;
 
 //    for( ; idx >= 0; idx = hierarchy_vector[idx][0] )
-    for(int idx=0; idx< 1; idx++)
-    {
+    for(int idx=0; idx< 1; idx++){
         cv::Scalar color( rand()&255, rand()&255, rand()&255 );
         drawContours( dst, contour_set, idx, color, -1, 8, hierarchy_vector );
 	}
