@@ -25,8 +25,7 @@ int main(int argc, char** argv )
     cv::namedWindow("Display Image", cv::WINDOW_AUTOSIZE );
   
 	contours contour_set = read_poly_list_2_contour(argv[1]);
-	hierarch hierarchy_vector = extract_hierarchy(contour_set.size());
-    
+	hierarch hierarchy_vector = extract_hierarchy(contour_set.size());    
     
     cv::Mat dst = cv::Mat::zeros(MAX_IMAGE+2*MAX_IMAGE/10, MAX_IMAGE+2*MAX_IMAGE/10, CV_8UC3);
     
@@ -36,11 +35,13 @@ int main(int argc, char** argv )
     for(int idx=0; idx< 1; idx++)
     {
         cv::Scalar color( rand()&255, rand()&255, rand()&255 );
-        drawContours( dst, contour_set, idx, color, CV_FILLED, 8, hierarchy_vector );
+        drawContours( dst, contour_set, idx, color, -1, 8, hierarchy_vector );
 	}
     
+    cv::Mat flipped;
+//    cv::flip( dst,flipped, 0);   
+    
     cv::imshow("Display Image", dst);
-
     cv::waitKey(0);
 
     return 0;
@@ -82,13 +83,8 @@ contours read_poly_list_2_contour(const std::string& name){
 //	contour_vector.push_back(read_poly(fin,correction) );
 	for(int i=0; i<number_of_polygons; i++){	
 		contour_vector.push_back(read_poly(fin, correction) );
-//		printf("value of correction is %f \n", correction[0]);
+//		printf("value of correction is %f, xmin %f, ymin %f \n", correction[0], correction[1], correction[2]);
 	}
-	
-	
-
-
-	
 
   	fin.close();
   	
@@ -132,28 +128,25 @@ std::vector<cv::Point> read_poly(std::ifstream& fin, std::vector<float>& correct
 	    
 
 	if (correction.size() == 0){
-//	if (1 == 1){
-		correction.reserve(3);
 	    float x_rank = x_max - x_min;
 	    float y_rank = y_max - y_min;
 	    float max_rank = std::max(x_rank, y_rank);
-	    correction[0]=( (MAX_IMAGE) / max_rank);
-	    correction[1]=x_min;
-	    correction[2]=y_min;
+	    correction.push_back( (MAX_IMAGE) / max_rank);
+	    correction.push_back(x_min);
+	    correction.push_back(y_min);
+//	    printf("Size of correction %d\n", (int)correction.size());
 	}
     
     for(int i=0;i < contour_size;i++ ){
-        fin>>id; id=id-1;
+        fin >> id; id=id-1;
         
+//        float x_corrected = (x_vector[id] - correction[1])*(correction[0]) + MAX_IMAGE/10;
+//        float y_corrected = (y_vector[id] - correction[2])*(correction[0]) + MAX_IMAGE/10;
+
         float x_corrected = (x_vector[id] - correction[1])*(correction[0]) + MAX_IMAGE/10;
-        float y_corrected = (y_vector[id] - correction[2])*(correction[0]) + MAX_IMAGE/10;
-        
+        float y_corrected = -(y_vector[id] - correction[2])*(correction[0]) - MAX_IMAGE/10 + MAX_IMAGE;
+                
         ordered.push_back(cv::Point((int)x_corrected, (int)y_corrected  ) );
-        
-        //cv::Point2f current_point(x,y);
-        //read.push_back(current_point);
-        ////double d=x*x+y*y;
-        //printf(" (%f, %f) \n", x,y);
     }
    
    return ordered;
