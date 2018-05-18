@@ -19,7 +19,20 @@ bool detect_concave_triplet(cv::Point p_0, cv::Point p_1, cv::Point p_2){
 }
 
 
-
+std::ostream& operator<<(std::ostream& os, Visibility_Graph vis){
+	os << "Connectivity \n";
+	cv::Size vis_size = vis.Oclusion_Adjacency.size();
+	for(int i=0;i < vis_size.width; i++ ){
+		for(int j=0;j < vis_size.height; j++ ){
+			os << vis.Oclusion_Adjacency.at<int>(cv::Point(i,j) ) << " ";
+		}
+		os << "\n";
+	}
+	os << "\n\n";
+//	os << 5%4 << "\n";
+//	os << (-1)%4 << "\n";
+	return os;
+ }
 
 
 
@@ -61,11 +74,6 @@ std::vector< std::pair<cv::Point, cv::Point> > Visibility_Graph::extract_Lines()
 }
 
 
-
-
-	// Private Functions
-
-
 void Visibility_Graph::write_contour(std::vector<std::vector<cv::Point> > contour_in){
 	vector_of_contours = contour_in;
 	external_contour = contour_in[0];
@@ -77,9 +85,14 @@ void Visibility_Graph::write_contour(std::vector<std::vector<cv::Point> > contou
 			number_of_points += contour_in[i].size();
 		}
 	}
-	Oclusion_Adjacency = cv::Mat::zeros(number_of_points, number_of_points, CV_16SC1);
+	Oclusion_Adjacency = cv::Mat::zeros(number_of_points, number_of_points, CV_32SC1);
 	decomposed=false;
 }
+
+
+
+
+	// Private Functions
 
 
 void Visibility_Graph::detect_convave_points(){
@@ -102,6 +115,16 @@ void Visibility_Graph::detect_convave_points(){
 
 std::vector<int> Visibility_Graph::indices_of_visible(int index_in){
 	std::vector<int> index_visible;
+
+	int previous_index = (index_in==0)								? external_contour.size()-1 : index_in-1;
+	int next_index     = (index_in==(external_contour.size()-1))	? 0 : index_in+1;	
+	
+	
+	for(int i=1; i < external_contour.size(); i++ ){
+		int round_index = index_in + i;
+//		detect_concave_triplet(external_contour[index_in], external_contour[last_visible_index], external_contour[counter_up]) 
+	}
+	
 	
 	
 	int counter_up=index_in + 1;
@@ -127,6 +150,7 @@ std::vector<int> Visibility_Graph::indices_of_visible(int index_in){
 	return index_visible;
 		
 }
+
 
 
 

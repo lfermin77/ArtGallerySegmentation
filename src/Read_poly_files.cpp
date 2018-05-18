@@ -38,6 +38,7 @@ int main(int argc, char** argv )
     vis_graph.decompose();
     std::vector<cv::Point> concave_points = vis_graph.read_concave_points();
     std::vector< std::pair<cv::Point, cv::Point> > lines = vis_graph.extract_Lines();
+    std::cout << vis_graph;
 
     
     //Draw Image
