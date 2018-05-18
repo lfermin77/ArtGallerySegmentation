@@ -14,8 +14,6 @@ int main(int argc, char** argv )
         return -1;
     }
 
-    cv::Mat image;
-    cv::namedWindow("Display Image", cv::WINDOW_AUTOSIZE );
   
 	//Transform poly format to contour format
 	std::vector<std::vector<cv::Point> > contour_set = read_poly_list_2_contour(argv[1]);
@@ -37,11 +35,15 @@ int main(int argc, char** argv )
 	//Visibility Graph
     Visibility_Graph vis_graph;
     vis_graph.write_contour(reduced_contour);
+    vis_graph.decompose();
+    std::vector<cv::Point> concave_points = vis_graph.read_concave_points();
+    std::vector< std::pair<cv::Point, cv::Point> > lines = vis_graph.extract_Lines();
 
     
     //Draw Image
     cv::Mat dst = cv::Mat::zeros(MAX_IMAGE+2*MAX_IMAGE/10, MAX_IMAGE+2*MAX_IMAGE/10, CV_8UC3);
     
+		//Draw Contours
     int idx = 0;
     for( ; idx >= 0; idx = hierarchy_vector[idx][0] ){
 //    for(int idx=0; idx< 1; idx++){
@@ -49,10 +51,20 @@ int main(int argc, char** argv )
 //        drawContours( dst, contour_set, idx, color, -1, 8, hierarchy_vector );
         drawContours( dst, reduced_contour, idx, color, -1, 8, hierarchy_vector );
 	}
-    
+		//Draw Circles
+	for(int i=0; i< concave_points.size();i++){
+		cv::circle(dst, concave_points[i], 3, cv::Scalar( 0, 0, 255), -1);
+	}
+		//Draw Lines
+	for(int i=0; i< lines.size();i++){
+		cv::line(dst, lines[i].first, lines[i].second, cv::Scalar( 0, 0, 255), 1);
+	}
+		
+		
     
     
     //Show Image    
+//	cv::namedWindow("Display Image", cv::WINDOW_AUTOSIZE );
     cv::imshow("Image from Polygon", dst);
     cv::waitKey(0);
 
