@@ -64,12 +64,24 @@ std::vector< std::pair<cv::Point, cv::Point> > Visibility_Graph::extract_Lines()
 	int index=5;
 	std::vector<int> visible_to_index = indices_of_visible(index);
 	
-	for(int i=0;i < visible_to_index.size();i++){
-		std::pair<cv::Point, cv::Point> current_line(external_contour[index], external_contour[visible_to_index[i]] );
-		Lines.push_back(current_line);
+	//~ for(int i=0;i < visible_to_index.size();i++){
+		//~ std::pair<cv::Point, cv::Point> current_line(external_contour[index], external_contour[visible_to_index[i]] );
+		//~ Lines.push_back(current_line);
+	//~ }
+	//~ 
+	std::vector< std::vector<int> > line_set = simple_visibility();
+	printf("Number of lines is %d\n",(int)line_set.size());
+	
+	for(int i=0; i<line_set.size();i++){
+		std::vector<int> connection_vec = line_set[i];
+		for(int j=0; j<line_set[i].size();j++){
+			std::pair<cv::Point, cv::Point> current_line(external_contour[ concave_points_indices[i]  ], external_contour[ connection_vec[j] ] ) ;
+			Lines.push_back(current_line);
+		}
 	}
 	
-
+	
+	
 	return Lines;
 }
 
@@ -120,39 +132,34 @@ std::vector<int> Visibility_Graph::indices_of_visible(int index_in){
 	int next_index     = (index_in==(external_contour.size()-1))	? 0 : index_in+1;	
 	
 	
-	for(int i=1; i < external_contour.size(); i++ ){
-		int round_index = index_in + i;
-//		detect_concave_triplet(external_contour[index_in], external_contour[last_visible_index], external_contour[counter_up]) 
-	}
-	
-	
-	
-	int counter_up=index_in + 1;
-	if (counter_up < external_contour.size()){
-		int last_visible_index = counter_up;
-		index_visible.push_back(counter_up);
-		while(counter_up < external_contour.size()){
-			
-			if (detect_concave_triplet(external_contour[index_in], external_contour[last_visible_index], external_contour[counter_up])  ){
-				Oclusion_Adjacency.at<int>(cv::Point(index_in,counter_up))=1;
-				Oclusion_Adjacency.at<int>(cv::Point(counter_up, index_in))=1;
-			}
-			else{
-				index_visible.push_back(counter_up);
-				last_visible_index=counter_up;
-			}
-			
-			counter_up++;
+	for(int i=2; i < (external_contour.size()-1); i++ ){
+		int round_index = (index_in + i)%(external_contour.size() );
+		
+		bool at_right = detect_concave_triplet(external_contour[index_in], external_contour[previous_index], external_contour[round_index]);
+		bool at_left  = detect_concave_triplet(external_contour[index_in], external_contour[next_index], 	 external_contour[round_index]);
+		
+		if (!at_right && at_left){
+			Oclusion_Adjacency.at<int>(cv::Point(index_in, round_index))=1;
+			Oclusion_Adjacency.at<int>(cv::Point(round_index, index_in))=1;
+			index_visible.push_back(round_index);
+		}
+		else{
+//			index_visible.push_back(round_index);
 		}
 	}
-	
-	
 	return index_visible;
 		
 }
 
 
-
+std::vector< std::vector<int> > Visibility_Graph::simple_visibility(){
+	std::vector< std::vector<int> >  visibility_of_concaves;
+	
+	for(int i=0;i<concave_points_indices.size();i++){
+		visibility_of_concaves.push_back(indices_of_visible( concave_points_indices[i]) );
+	}
+	return visibility_of_concaves;	
+}
 
 
 

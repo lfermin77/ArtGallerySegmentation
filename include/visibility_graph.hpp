@@ -31,4 +31,5 @@ class Visibility_Graph{
 
 		void detect_convave_points();
 		std::vector<int> indices_of_visible(int index_in);
+		std::vector< std::vector<int> > simple_visibility();
 };
