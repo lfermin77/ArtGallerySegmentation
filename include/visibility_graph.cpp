@@ -73,7 +73,14 @@ std::vector< std::pair<cv::Point, cv::Point> > Visibility_Graph::extract_Lines()
 			Lines.push_back(current_line);
 		}
 	}
+	
+	visible_indices_polar(concave_points_indices[1]);
 
+	//~ std::vector< std::pair<int,int> > visible_indices = check_visibility_through_concave_vertex(0);
+	//~ for(int i=0; i<visible_indices.size();i++){
+		//~ std::pair<cv::Point, cv::Point> current_line(external_contour[ visible_indices[i].first  ], external_contour[ visible_indices[i].second ] ) ;
+		//~ Lines.push_back(current_line);
+	//~ }
 	
 	//~ for(int i=0; i<external_contour.size();i++){
 		//~ for(int j=0; j<i;j++){
@@ -96,6 +103,12 @@ void Visibility_Graph::write_contour(std::vector<std::vector<cv::Point> > contou
 	vector_of_contours = contour_in;
 	external_contour = contour_in[0];
 	int number_of_points = contour_in[0].size();
+
+	for(int i=0;i<external_contour.size();i++){
+		std::complex<float> current_point( external_contour[i].x, external_contour[i].y  );
+		external_complex.push_back(current_point);
+	}
+
 	
 	//~ for(int i=1; i< contour_in.size(); i++){
 		//~ if(contour_in[i].size() > 2){
@@ -138,8 +151,7 @@ std::vector<int> Visibility_Graph::indices_of_visible(int index_in){
 
 	int previous_index = (index_in==0)								? external_contour.size()-1 : index_in-1;
 	int next_index     = (index_in==(external_contour.size()-1))	? 0 : index_in+1;	
-	
-	index_visible.push_back(previous_index);
+
 	index_visible.push_back(next_index);
 	
 	for(int i=2; i < (external_contour.size()-1); i++ ){
@@ -157,6 +169,8 @@ std::vector<int> Visibility_Graph::indices_of_visible(int index_in){
 			index_visible.push_back(round_index);
 		}
 	}
+
+	index_visible.push_back(previous_index);
 	return index_visible;
 		
 }
@@ -176,6 +190,9 @@ std::vector< std::vector<int> > Visibility_Graph::simple_visibility(){
 		}
 		printf(" \n ");
 	}
+	
+	
+	
 	return visibility_of_concaves;	
 }
 
@@ -206,16 +223,105 @@ void Visibility_Graph::second_visibiliy(){
 
 
 
-std::vector< std::vector<int> > Visibility_Graph::check_visibility_through_vertex(int index){
-	std::vector< std::vector<int> > pepe;
-	return pepe;
+std::vector< std::pair<int,int> > Visibility_Graph::check_visibility_through_concave_vertex(int current_concave_index){
+	
+	int current_index = concave_points_indices[current_concave_index];
+	int previous_index = (current_index==0)							    ? external_contour.size()-1 : current_index-1;
+	int next_index     = (current_index==(external_contour.size()-1))	? 0 : current_index+1;
+			
+	std::vector<int> current_visible = indices_of_visible( current_index );
+
+	//~ std::cout << "The visible indices of "<< current_index <<" are ";
+	//~ for(int i=0;i < current_visible.size();i++){
+			//~ std::cout << " "<< current_visible[i];
+	//~ }
+	//~ std::cout << std::endl;
+		
+	std::vector< std::pair<int,int> > ocluded_lines;
+	
+	for(int i=0;i < current_visible.size();i++){
+	//~ for(int i=0;i < 1;i++){
+		//~ int index_2_check = next_index;
+		int index_2_check = current_visible[i];		
+		std::cout << "     the nex index is: "<< index_2_check  << std::endl;
+		
+		for(int j=i+1;j< current_visible.size() ;j++){
+
+
+			
+	//		bool visible = detect_concave_triplet(external_contour[previous_index], external_contour[current_index], external_contour[ j ]);
+			//~ bool visible = detect_concave_triplet(external_contour[j], external_contour[current_index], external_contour[ next_index ]);
+			bool visible = detect_concave_triplet(external_contour[current_visible[j] ], external_contour[current_index], external_contour[ index_2_check ]);
+			if(visible){
+					Oclusion_Adjacency.at<int>(cv::Point(current_visible[j],index_2_check))=1;
+					Oclusion_Adjacency.at<int>(cv::Point(index_2_check,current_visible[j]))=1;
+					std::cout << "     the pair ocluded is: "<< current_visible[j] <<" , " << index_2_check << std::endl;
+					std::pair<int,int> visible_pair(current_visible[j], index_2_check);
+					ocluded_lines.push_back(visible_pair);
+
+			}
+			else{
+				//~ std::pair<int,int> visible_pair(current_visible[j], index_2_check);
+				//~ ocluded_lines.push_back(visible_pair);
+
+			}
+			//end j for
+		}
+	}
+
+	
+	
+	return ocluded_lines;
 }
 
 
 
 
+std::vector<int> Visibility_Graph::visible_indices_polar(int index_in){
+	std::vector<int> index_visible;
+
+	int previous_index = (index_in==0)								? external_contour.size()-1 : index_in-1;
+	int next_index     = (index_in==(external_contour.size()-1))	? 0 : index_in+1;	
+
+	index_visible.push_back(next_index);
+
+	std::vector<std::complex<float> > relative_position;
+	std::complex<float> next_vector = external_complex[next_index] - external_complex[index_in];
+	next_vector /= std::abs(next_vector);
+	
+	std::vector<float> angles;
+	std::map<float,int> angle2indices;
 
 
+	for(int i=0; i < external_complex.size(); i++ ){
+		if(i!= index_in){
+			std::complex<float> current_relative = -external_complex[i] + external_complex[index_in];
+			current_relative/=next_vector;
+			relative_position.push_back( current_relative );
+			std::pair<float, int> index_map(-std::arg(current_relative), i);
+			angle2indices.insert( index_map);
+			std::cout << "unordered angle " << std::arg(current_relative)<< std::endl;
+		}
+	}
+	
+	for(std::map<float,int>::iterator map_iter = angle2indices.begin(); map_iter != angle2indices.end(); map_iter ++ ){
+		std::cout << "ordered angle " << map_iter->first <<" with index "<< map_iter->second  << std::endl;
+	}
+	
+//	angle2indices
+
+
+	//~ for(int i=2; i < (external_contour.size()-1); i++ ){
+		//~ int round_index = (index_in + i)%(external_contour.size() );
+		//~ 
+	//~ }
+	
+	
+	
+	
+	
+	return index_visible;
+}
 
 
 

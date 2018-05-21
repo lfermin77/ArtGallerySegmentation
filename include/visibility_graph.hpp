@@ -1,5 +1,9 @@
 #include <stdio.h>
 #include <fstream>
+
+#include <math.h>
+#include <complex>
+
 #include <opencv2/opencv.hpp>
 
 
@@ -26,6 +30,7 @@ class Visibility_Graph{
 		std::vector<int> concave_points_indices;
 		cv::Mat Oclusion_Adjacency;
 		
+		std::vector<std::complex<float> > external_complex;
 		
 
 
@@ -33,5 +38,6 @@ class Visibility_Graph{
 		std::vector<int> indices_of_visible(int index_in);
 		std::vector< std::vector<int> > simple_visibility();
 		void second_visibiliy();
-		std::vector< std::vector<int> > check_visibility_through_vertex(int index);
+		std::vector< std::pair<int,int> > check_visibility_through_concave_vertex(int index);
+		std::vector<int> visible_indices_polar(int index_in);
 };
