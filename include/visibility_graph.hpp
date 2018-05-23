@@ -40,4 +40,5 @@ class Visibility_Graph{
 		void second_visibiliy();
 		std::vector< std::pair<int,int> > check_visibility_through_concave_vertex(int index);
 		std::vector<int> visible_indices_polar(int index_in);
+		bool is_visible (int reference_index, int index, std::set<int> visible_lines_start);
 };

@@ -74,7 +74,7 @@ std::vector< std::pair<cv::Point, cv::Point> > Visibility_Graph::extract_Lines()
 		}
 	}
 	
-	visible_indices_polar(concave_points_indices[1]);
+	visible_indices_polar(concave_points_indices[0]);
 
 	//~ std::vector< std::pair<int,int> > visible_indices = check_visibility_through_concave_vertex(0);
 	//~ for(int i=0; i<visible_indices.size();i++){
@@ -290,7 +290,7 @@ std::vector<int> Visibility_Graph::visible_indices_polar(int index_in){
 	next_vector /= std::abs(next_vector);
 	
 	std::vector<float> angles;
-	std::map<float,int> angle2indices;
+	std::multimap<float,int> angle2indices;
 
 
 	for(int i=0; i < external_complex.size(); i++ ){
@@ -300,12 +300,68 @@ std::vector<int> Visibility_Graph::visible_indices_polar(int index_in){
 			relative_position.push_back( current_relative );
 			std::pair<float, int> index_map(-std::arg(current_relative), i);
 			angle2indices.insert( index_map);
-			std::cout << "unordered angle " << std::arg(current_relative)<< std::endl;
+//			std::cout << "unordered angle " << std::arg(current_relative)<< std::endl;
 		}
 	}
 	
-	for(std::map<float,int>::iterator map_iter = angle2indices.begin(); map_iter != angle2indices.end(); map_iter ++ ){
-		std::cout << "ordered angle " << map_iter->first <<" with index "<< map_iter->second  << std::endl;
+	std::set<int> visible_lines_start;
+	
+	std::cout << "the first visible is vertex "<< next_index << " comes from the line starting in " <<  index_in << std::endl;
+	visible_lines_start.insert(next_index);
+	
+
+	
+	
+	
+	
+	for(std::multimap<float,int>::iterator map_iter = angle2indices.begin(); map_iter != angle2indices.end(); map_iter ++ ){
+		int current_index = map_iter->second;
+//		std::cout << "ordered angle " << map_iter->first <<" with index "<< map_iter->second  << std::endl;
+		std::cout << "visible_lines_start.size()  " << visible_lines_start.size()  << std::endl;
+		is_visible (index_in, current_index, visible_lines_start);
+		
+//		std::cout << "The line visibles are ";
+		std::vector <int> index_of_line_closed;
+		for (std::set<int>::iterator set_iter = visible_lines_start.begin(); set_iter != visible_lines_start.end(); set_iter++){
+//			std::cout << "  " << *set_iter;
+			if( ( current_index  == (1+*set_iter) ) ){
+				std::cout << "The index  " << current_index <<" close the line "<< current_index-1  << std::endl;
+				index_of_line_closed.push_back(current_index-1);
+			}
+			if( ( current_index  == (*set_iter -1) )  ){
+				std::cout << "The index  " << current_index <<" close the line "<< current_index+1  << std::endl;
+				index_of_line_closed.push_back(current_index+1);
+			}
+		}
+		 std::cout << std::endl;
+		 
+		// First case index close a line and open a new one
+		if(index_of_line_closed.size() == 1){
+			if(index_of_line_closed[0] < current_index){
+				visible_lines_start.erase(index_of_line_closed[0]);
+				visible_lines_start.insert(current_index);
+			}
+			else{
+				visible_lines_start.erase(index_of_line_closed[0]);
+				visible_lines_start.insert(current_index-1);
+			}
+		}
+		
+		//Second case, index is new and open two lines!
+		if(index_of_line_closed.size() == 0){		
+			visible_lines_start.insert(current_index);
+			visible_lines_start.insert(current_index-1);
+		}
+		
+		
+		// Third case, index close two lines
+		if(index_of_line_closed.size() == 2){		
+			visible_lines_start.erase(current_index);
+			visible_lines_start.erase(current_index-1);
+		}
+
+		
+
 	}
 	
 //	angle2indices
@@ -325,6 +381,29 @@ std::vector<int> Visibility_Graph::visible_indices_polar(int index_in){
 
 
 
+bool Visibility_Graph::is_visible (int reference_index, int index, std::set<int> visible_lines_start){
+	std::complex<float> reference2index = external_complex[index] - external_complex[reference_index];
+	float angle_reference = std::arg(reference2index);
+	
+	std::vector<float> distance2lines;
+	for(std::set<int>::iterator set_iter = visible_lines_start.begin(); set_iter != visible_lines_start.end();set_iter++){
+		int index_start = *set_iter;
+		std::complex<float> first_point = external_complex[ index_start ] - external_complex[reference_index] ;
+		std::complex<float> last_point = external_complex[ index_start +1]- external_complex[reference_index];
+		
+		float angle_first = std::arg(first_point);
+		float angle_last = std::arg(last_point);
+		
+		std::cout << "angle in: " << angle_first << ", angle out: " << angle_last << " angle current: " << angle_reference << std::endl;
+		
+		if (  ( (angle_reference <= angle_last)&&(angle_reference >= angle_first) )   ||    ((angle_reference >= angle_last)&&(angle_reference <= angle_first) )    ){
+			std::cout << "probably occluded" << std::endl;
+		}
+
+	}
+	
+	return true;
+}
 
 
 
