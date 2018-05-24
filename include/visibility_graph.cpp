@@ -66,15 +66,21 @@ std::vector< std::pair<cv::Point, cv::Point> > Visibility_Graph::extract_Lines()
 	std::vector< std::vector<int> > line_set = simple_visibility();
 	printf("Number of lines is %d\n",(int)line_set.size());
 	
-	for(int i=0; i<line_set.size();i++){
-		std::vector<int> connection_vec = line_set[i];
-		for(int j=0; j<line_set[i].size();j++){
-			std::pair<cv::Point, cv::Point> current_line(external_contour[ concave_points_indices[i]  ], external_contour[ connection_vec[j] ] ) ;
-			Lines.push_back(current_line);
-		}
-	}
+	//~ for(int i=0; i<line_set.size();i++){
+		//~ std::vector<int> connection_vec = line_set[i];
+		//~ for(int j=0; j<line_set[i].size();j++){
+			//~ std::pair<cv::Point, cv::Point> current_line(external_contour[ concave_points_indices[i]  ], external_contour[ connection_vec[j] ] ) ;
+			//~ Lines.push_back(current_line);
+		//~ }
+	//~ }
 	
-	visible_indices_polar(concave_points_indices[0]);
+	std::vector<int> visibles_index2 = visible_indices_polar(concave_points_indices[0]);
+	for(int j=0; j < visibles_index2.size(); j++){
+		std::pair<cv::Point, cv::Point> current_line(external_contour[ concave_points_indices[0]  ], external_contour[ visibles_index2[j] ] ) ;
+		Lines.push_back(current_line);
+	}
+
+
 
 	//~ std::vector< std::pair<int,int> > visible_indices = check_visibility_through_concave_vertex(0);
 	//~ for(int i=0; i<visible_indices.size();i++){
@@ -318,7 +324,9 @@ std::vector<int> Visibility_Graph::visible_indices_polar(int index_in){
 		int current_index = map_iter->second;
 //		std::cout << "ordered angle " << map_iter->first <<" with index "<< map_iter->second  << std::endl;
 		std::cout << "visible_lines_start.size()  " << visible_lines_start.size()  << std::endl;
-		is_visible (index_in, current_index, visible_lines_start);
+		if(is_visible (index_in, current_index, visible_lines_start)){
+			index_visible.push_back(current_index);
+		}
 		
 //		std::cout << "The line visibles are ";
 		std::vector <int> index_of_line_closed;
@@ -394,10 +402,19 @@ bool Visibility_Graph::is_visible (int reference_index, int index, std::set<int>
 		float angle_first = std::arg(first_point);
 		float angle_last = std::arg(last_point);
 		
-		std::cout << "angle in: " << angle_first << ", angle out: " << angle_last << " angle current: " << angle_reference << std::endl;
+		float angle_dif_poly = std::arg(     last_point/first_point);
+		float angle_dif_ref = std::arg(reference2index/first_point);
 		
-		if (  ( (angle_reference <= angle_last)&&(angle_reference >= angle_first) )   ||    ((angle_reference >= angle_last)&&(angle_reference <= angle_first) )    ){
-			std::cout << "probably occluded" << std::endl;
+		std::cout << "visible line: " << index_start << ", " << index_start+1  << std::endl;
+//		std::cout << "angle in: " << angle_first << ", angle out: " << angle_last << " angle current: " << angle_reference << std::endl;
+		
+		if (  ( (angle_dif_poly >= 0)&&(angle_dif_ref <= angle_dif_poly) )   ||    ( (angle_dif_poly <= 0)&&(angle_dif_ref > angle_dif_poly) )    ){
+//		if (  ( (angle_reference <= angle_last)&&(angle_reference >= angle_first) )   ||    ((angle_reference >= angle_last)&&(angle_reference <= angle_first) )    ){
+
+			if( ( std::abs(reference2index) > std::abs(first_point) ) && ( std::abs(reference2index) > std::abs(last_point) )  ){
+				std::cout << "it is occluded" << std::endl;
+				return false;
+			}
 		}
 
 	}
