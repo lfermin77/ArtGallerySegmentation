@@ -63,8 +63,8 @@ std::vector< std::pair<cv::Point, cv::Point> > Visibility_Graph::extract_Lines()
 
 	
 	//~ second_visibiliy();
-	std::vector< std::vector<int> > line_set = simple_visibility();
-	printf("Number of lines is %d\n",(int)line_set.size());
+	//~ std::vector< std::vector<int> > line_set = simple_visibility();
+	//~ printf("Number of lines is %d\n",(int)line_set.size());
 	
 	//~ for(int i=0; i<line_set.size();i++){
 		//~ std::vector<int> connection_vec = line_set[i];
@@ -73,11 +73,15 @@ std::vector< std::pair<cv::Point, cv::Point> > Visibility_Graph::extract_Lines()
 			//~ Lines.push_back(current_line);
 		//~ }
 	//~ }
-	
-	std::vector<int> visibles_index2 = visible_indices_polar(concave_points_indices[0]);
-	for(int j=0; j < visibles_index2.size(); j++){
-		std::pair<cv::Point, cv::Point> current_line(external_contour[ concave_points_indices[0]  ], external_contour[ visibles_index2[j] ] ) ;
-		Lines.push_back(current_line);
+
+//	for(int i=0; i< external_contour.size();i++){
+	{int i=0;
+//		std::vector<int> visibles_index2 = visible_indices_polar(concave_points_indices[0]);
+		std::vector<int> visibles_index2 = visible_indices_polar(i);
+		for(int j=0; j < visibles_index2.size(); j++){
+			std::pair<cv::Point, cv::Point> current_line(external_contour[ i  ], external_contour[ visibles_index2[j] ] ) ;
+			Lines.push_back(current_line);
+		}
 	}
 
 
@@ -292,21 +296,45 @@ std::vector<int> Visibility_Graph::visible_indices_polar(int index_in){
 	index_visible.push_back(next_index);
 
 	std::vector<std::complex<float> > relative_position;
-	std::complex<float> next_vector = external_complex[next_index] - external_complex[index_in];
+	std::complex<float> next_vector     = external_complex[    next_index] - external_complex[index_in];
+	std::complex<float> previous_vector = external_complex[previous_index] - external_complex[index_in];
 	next_vector /= std::abs(next_vector);
+	
+	float threshold_angle= std::arg(previous_vector/next_vector);
+	if (threshold_angle < 0){
+		threshold_angle = M_PI- threshold_angle;
+	}
+			
+	std::cout << "threshold_angle " << threshold_angle << std::endl;
+	
 	
 	std::vector<float> angles;
 	std::multimap<float,int> angle2indices;
 
 
 	for(int i=0; i < external_complex.size(); i++ ){
-		if(i!= index_in){
-			std::complex<float> current_relative = -external_complex[i] + external_complex[index_in];
-			current_relative/=next_vector;
-			relative_position.push_back( current_relative );
-			std::pair<float, int> index_map(-std::arg(current_relative), i);
-			angle2indices.insert( index_map);
-//			std::cout << "unordered angle " << std::arg(current_relative)<< std::endl;
+		if(i != index_in){
+			std::complex<float> current_relative = external_complex[i] - external_complex[index_in];
+			current_relative =  current_relative / next_vector;
+			float current_angle = std::arg(current_relative);
+			
+			if (current_angle < 0){
+				current_angle = M_PI- current_angle;
+			}
+			
+			
+//			if(threshold_angle > 0){
+				
+			
+			if( current_angle < threshold_angle ){
+			
+				relative_position.push_back( current_relative );
+				std::pair<float, int> index_map(current_angle, i);
+				
+				angle2indices.insert( index_map);
+
+			}
+			std::cout <<"index "<< i<< " has unordered angle " << current_angle << std::endl;
 		}
 	}
 	
@@ -322,22 +350,22 @@ std::vector<int> Visibility_Graph::visible_indices_polar(int index_in){
 	
 	for(std::multimap<float,int>::iterator map_iter = angle2indices.begin(); map_iter != angle2indices.end(); map_iter ++ ){
 		int current_index = map_iter->second;
-//		std::cout << "ordered angle " << map_iter->first <<" with index "<< map_iter->second  << std::endl;
-		std::cout << "visible_lines_start.size()  " << visible_lines_start.size()  << std::endl;
-		if(is_visible (index_in, current_index, visible_lines_start)){
+		std::cout << "ordered angle " << map_iter->first <<" with index "<< map_iter->second  << std::endl;
+//		std::cout << "visible_lines_start.size()  " << visible_lines_start.size()  << std::endl;
+//		if(is_visible (index_in, current_index, visible_lines_start)){
 			index_visible.push_back(current_index);
-		}
+//		}
 		
 //		std::cout << "The line visibles are ";
 		std::vector <int> index_of_line_closed;
 		for (std::set<int>::iterator set_iter = visible_lines_start.begin(); set_iter != visible_lines_start.end(); set_iter++){
 //			std::cout << "  " << *set_iter;
 			if( ( current_index  == (1+*set_iter) ) ){
-				std::cout << "The index  " << current_index <<" close the line "<< current_index-1  << std::endl;
+	//			std::cout << "The index  " << current_index <<" close the line "<< current_index-1  << std::endl;
 				index_of_line_closed.push_back(current_index-1);
 			}
 			if( ( current_index  == (*set_iter -1) )  ){
-				std::cout << "The index  " << current_index <<" close the line "<< current_index+1  << std::endl;
+	//			std::cout << "The index  " << current_index <<" close the line "<< current_index+1  << std::endl;
 				index_of_line_closed.push_back(current_index+1);
 			}
 		}
@@ -405,14 +433,14 @@ bool Visibility_Graph::is_visible (int reference_index, int index, std::set<int>
 		float angle_dif_poly = std::arg(     last_point/first_point);
 		float angle_dif_ref = std::arg(reference2index/first_point);
 		
-		std::cout << "visible line: " << index_start << ", " << index_start+1  << std::endl;
+//		std::cout << "visible line: " << index_start << ", " << index_start+1  << std::endl;
 //		std::cout << "angle in: " << angle_first << ", angle out: " << angle_last << " angle current: " << angle_reference << std::endl;
 		
 		if (  ( (angle_dif_poly >= 0)&&(angle_dif_ref <= angle_dif_poly) )   ||    ( (angle_dif_poly <= 0)&&(angle_dif_ref > angle_dif_poly) )    ){
 //		if (  ( (angle_reference <= angle_last)&&(angle_reference >= angle_first) )   ||    ((angle_reference >= angle_last)&&(angle_reference <= angle_first) )    ){
 
 			if( ( std::abs(reference2index) > std::abs(first_point) ) && ( std::abs(reference2index) > std::abs(last_point) )  ){
-				std::cout << "it is occluded" << std::endl;
+//				std::cout << "it is occluded" << std::endl;
 				return false;
 			}
 		}
