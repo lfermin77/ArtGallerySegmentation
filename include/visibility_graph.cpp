@@ -127,7 +127,7 @@ std::vector< std::pair<cv::Point, cv::Point> > Visibility_Graph::extract_Lines()
 	//~ }
 
 //	for(int i=0; i< external_contour.size();i++){
-	{int i=0;
+	{int i=1;
 //		std::vector<int> visibles_index2 = visible_indices_polar(concave_points_indices[0]);
 		std::vector<int> visibles_index2 = visible_indices_polar(i);
 		for(int j=0; j < visibles_index2.size(); j++){
@@ -329,16 +329,8 @@ std::vector<int> Visibility_Graph::visible_indices_polar(int index_in){
 	std::complex<float> next_vector     = external_complex[    next_index] - external_complex[index_in];
 	std::complex<float> previous_vector = external_complex[previous_index] - external_complex[index_in];
 
-	
-	float threshold_angle = std::arg(previous_vector/next_vector) ;			
-	std::cout << "threshold_angle " << threshold_angle << std::endl;
-	
-	
-	
-	
-	/////////////////////////////
-	std::cout << "contour is clockwise "<< std::endl;
-	
+	//Find threshold
+	float threshold_angle = std::arg(previous_vector/next_vector) ;	
 	if(threshold_angle >0){
 		std::cout << "vertex is convex "<< std::endl;
 	}
@@ -346,13 +338,12 @@ std::vector<int> Visibility_Graph::visible_indices_polar(int index_in){
 		std::cout << "vertex is concave "<< std::endl;
 		threshold_angle = 2*M_PI + threshold_angle;
 	}
-	
-	
-	std::cout << "threshold_angle2 " << threshold_angle << std::endl;	
-	
+		
+	std::cout << "threshold_angle " << threshold_angle << std::endl;	
 	
 	
 	
+	// Order the set of angles
 	std::vector<float> angles;
 	std::multimap<float,int> angle2indices;
 
@@ -380,28 +371,30 @@ std::vector<int> Visibility_Graph::visible_indices_polar(int index_in){
 		}
 	}
 	
+	
+	//Find the set of lines
 	std::set<int> visible_lines_start;
 	
-	std::cout << "the first visible is vertex "<< next_index << " comes from the line starting in " <<  index_in << std::endl;
-	visible_lines_start.insert(index_in);
 	
+	std::cout << "the first visible is vertex "<< next_index << " comes from the line starting in " <<  index_in << std::endl;
+//	visible_lines_start.insert(index_in);
+	visible_lines_start.insert(next_index);
 
 	
-	
-	
-	
-	for(std::multimap<float,int>::iterator map_iter = angle2indices.begin(); map_iter != angle2indices.end(); map_iter ++ ){
+	std::multimap<float,int>::iterator map_iter = angle2indices.begin();
+	map_iter ++;
+	for( ; map_iter != angle2indices.end(); map_iter ++ ){
 		int current_index = map_iter->second;
 		std::cout << "ordered angle " << map_iter->first <<" with index "<< map_iter->second  << std::endl;
-//		std::cout << "visible_lines_start.size()  " << visible_lines_start.size()  << std::endl;
 
 		int previous_current_index = (current_index==0) ? external_contour.size()-1 : current_index-1;
 		int next_current_index = (current_index==(external_contour.size()-1)) ? 0 : current_index+1;
 
-		if(is_visible (index_in, current_index, visible_lines_start)){
+		if(is_visible (index_in, current_index, visible_lines_start))
+		{
 			index_visible.push_back(current_index);
 		}
-		
+		//*
 		std::cout << "The line visibles are ";
 		std::vector <int> index_of_line_closed;
 		for (std::set<int>::iterator set_iter = visible_lines_start.begin(); set_iter != visible_lines_start.end(); set_iter++){
@@ -455,8 +448,9 @@ std::vector<int> Visibility_Graph::visible_indices_polar(int index_in){
 			std::cout << " "<< line_begin;
 		}
 		std::cout <<std::endl;
-
+	//*/
 	}
+
 	
 //	angle2indices
 
@@ -489,8 +483,11 @@ bool Visibility_Graph::is_visible (int reference_index, int index, std::set<int>
 		std::cout << "Checkin line from "<< index_start << " to "<< index_next << std::endl;
 		bool point_visible = is_visible_point(reference_index, index, index_start, index_next);
 		if(!point_visible){
-//			return false;
+			return false;
 		}
+
+
+
 
 
 
@@ -506,10 +503,6 @@ bool Visibility_Graph::is_visible (int reference_index, int index, std::set<int>
 		float angle_dif_poly = std::arg(     last_point/first_point);
 		float angle_dif_ref = std::arg(reference2index/first_point);
 
-
-		
-		
-		
 		
 //		std::cout << "visible line: " << index_start << ", " << index_start+1  << std::endl;
 //		std::cout << "angle in: " << angle_first << ", angle out: " << angle_last << " angle current: " << angle_reference << std::endl;
@@ -519,7 +512,7 @@ bool Visibility_Graph::is_visible (int reference_index, int index, std::set<int>
 
 			if( ( std::abs(reference2index) > std::abs(first_point) ) && ( std::abs(reference2index) > std::abs(last_point) )  ){
 //				std::cout << "it is occluded" << std::endl;
-				return false;
+//				return false;
 			}
 		}
 
@@ -531,9 +524,11 @@ bool Visibility_Graph::is_visible (int reference_index, int index, std::set<int>
 
 
 bool Visibility_Graph::is_visible_point(int index_0, int index_1, int index_start, int index_next){
+
+	std::cout << "Checkin vector from "<< index_0 << " to "<< index_1 << " with line from "<< index_start << " to "<< index_next << std::endl;
 	//equations are 
-	//x = x0*t0 + x1*(1-t0)
-	//y = y0*t0 + y1*(1-t0)
+	//x = x0*(1-t0) + x1*(t0)
+	//y = y0*(1-t0) + y1*(t0)
 	float x0 = external_complex[ index_0 ].real();
 	float y0 = external_complex[ index_0 ].imag();
 	float x1 = external_complex[ index_1 ].real();
@@ -551,33 +546,41 @@ bool Visibility_Graph::is_visible_point(int index_0, int index_1, int index_star
 	//Solve system 
 	//a*t0 + b*t2 = c
 	//d*t0 + e*t2 = f
-	//	t0 = (af - cd)/(ae - bd)
-	// 	t1 = (bf - ce)/(ae - bd)
+	//	t2 = (af - cd)/(ae - bd)
+	// 	t0 = (ce - fb)/(ae - bd)
 	
-	float a= x0-x1;
-	float b= x3-x2;
-	float c= x3-x1;
+	float a= x1-x0;
+	float b= x2-x3;
+	float c= x2-x0;
 	
-	float d= y0-y1;
-	float e= y3-y2;	
-	float f= y3-y1;
+	float d= y1-y0;
+	float e= y2-y3;	
+	float f= y2-y0;
 
-	float	t0 = 1-(a*f - c*d)/(a*e - b*d);
-	float 	t1 = (b*f - c*e)/(a*e - b*d);
+	float 	t0 = (c*e - f*b)/(a*e - b*d);
+	float	t2 = (a*f - c*d)/(a*e - b*d) ;
+	
+	std::cout << "t0: " << t0 << ",  t2: "<< t2 <<std::endl;
 
-	std::cout << "t0: " << t0 << ",  t1: "<< t1 <<std::endl;
 
-
-	if(  (t0 >=1) && (t1>=0) && (t1<= 1) ){
-		std::cout << "it is visible" << std::endl;
-		return true;
+	if(  (t2>=0) && (t2<= 1) ){
+		std::cout << "    intersection inside line" << std::endl;
+		if (t0 >= 1){
+			std::cout << "it is visible" << std::endl;
+			return true;
+		}
+		else{
+			std::cout << "it is ocluded" << std::endl;
+			return false;
+		}
 	}
 	else{
-		std::cout << "it is ocluded" << std::endl;
+		std::cout << "    intersection outside line" << std::endl;
+		return true;
 	}
 
 	
-	return false;
+	return true;
 }
 
 
