@@ -35,6 +35,7 @@ int main(int argc, char** argv )
 	//Visibility Graph
     Visibility_Graph vis_graph;
     vis_graph.write_contour(reduced_contour);
+    vis_graph.make_clockwise();
     vis_graph.decompose();
     std::vector<cv::Point> concave_points = vis_graph.read_concave_points();
     std::vector< std::pair<cv::Point, cv::Point> > lines = vis_graph.extract_Lines();

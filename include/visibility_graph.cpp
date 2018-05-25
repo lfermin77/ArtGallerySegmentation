@@ -61,25 +61,54 @@ std::vector<cv::Point> Visibility_Graph::read_concave_points(){
 
 
 void Visibility_Graph::write_contour(std::vector<std::vector<cv::Point> > contour_in){
-	vector_of_contours = contour_in;
 	external_contour = contour_in[0];
-	int number_of_points = contour_in[0].size();
+	number_of_points = contour_in[0].size();
+	
 
 	for(int i=0;i<external_contour.size();i++){
 		std::complex<float> current_point( external_contour[i].x, external_contour[i].y  );
 		external_complex.push_back(current_point);
 	}
 
-	
-	//~ for(int i=1; i< contour_in.size(); i++){
-		//~ if(contour_in[i].size() > 2){
-			//~ set_of_holes.push_back(contour_in[i]);
-			//~ number_of_points += contour_in[i].size();
-		//~ }
-	//~ }
 	Oclusion_Adjacency = cv::Mat::zeros(number_of_points, number_of_points, CV_32SC1);
+	
+	for(int i=1; i< contour_in.size(); i++){
+		std::vector<cv::Point> current_contour = contour_in[i];
+		if(current_contour.size() > 2){
+			set_of_holes.push_back(current_contour);
+			
+			std::vector<std::complex<float> > hole_complex;			
+			for(int j=0;j<current_contour.size();j++){
+				std::complex<float> current_point( current_contour[j].x, current_contour[j].y  );
+				hole_complex.push_back(current_point);
+			}
+			hole_set_complex.push_back(hole_complex);
+			
+			number_of_points += contour_in[i].size();
+		}
+	}
 	decomposed=false;
 }
+
+
+void Visibility_Graph::make_clockwise(){
+	//Fix external
+	if( cv::contourArea(external_contour, true)< 0){
+		std::reverse(external_contour.begin(),external_contour.end()); 
+		std::reverse(external_complex.begin(),external_complex.end());
+	}
+	
+	// Fix Holes
+	for(int i=0; set_of_holes.size();i++){
+		if( cv::contourArea(set_of_holes[i], true)< 0){
+			std::reverse(set_of_holes[i].begin(),set_of_holes[i].end()); 
+			std::reverse(hole_set_complex[i].begin(),hole_set_complex[i].end()); 
+		}
+	}
+	
+}
+
+
 
 std::vector< std::pair<cv::Point, cv::Point> > Visibility_Graph::extract_Lines(){
 	std::vector< std::pair<cv::Point, cv::Point> > Lines;
@@ -290,55 +319,34 @@ std::vector< std::pair<int,int> > Visibility_Graph::check_visibility_through_con
 std::vector<int> Visibility_Graph::visible_indices_polar(int index_in){
 	std::vector<int> index_visible;
 
-	int orientation;
-
 	int previous_index = (index_in==0)								? external_contour.size()-1 : index_in-1;
 	int next_index     = (index_in==(external_contour.size()-1))	? 0 : index_in+1;	
 
 	index_visible.push_back(next_index);
+
 
 	std::vector<std::complex<float> > relative_position;
 	std::complex<float> next_vector     = external_complex[    next_index] - external_complex[index_in];
 	std::complex<float> previous_vector = external_complex[previous_index] - external_complex[index_in];
 
 	
-	float threshold_angle = std::arg(previous_vector/next_vector) ;
-			
+	float threshold_angle = std::arg(previous_vector/next_vector) ;			
 	std::cout << "threshold_angle " << threshold_angle << std::endl;
 	
-	
-	std::complex<float> reference_vector;
 	
 	
 	
 	/////////////////////////////
-	if(   cv::contourArea(external_contour, true) >0){
-		std::cout << "contour is clockwise "<< std::endl;
-		orientation=1;
-		reference_vector = next_vector;
-		
-		if(threshold_angle >0){
-			std::cout << "vertex is convex "<< std::endl;
-		}
-		else{
-			std::cout << "vertex is concave "<< std::endl;
-			threshold_angle = 2*M_PI- threshold_angle;
-		}
+	std::cout << "contour is clockwise "<< std::endl;
+	
+	if(threshold_angle >0){
+		std::cout << "vertex is convex "<< std::endl;
 	}
 	else{
-		std::cout << "contour is counter-clockwise "<< std::endl;
-		orientation=-1;
-		reference_vector = previous_vector;
-		
-		if(threshold_angle <0){
-			std::cout << "vertex is convex "<< std::endl;			
-			threshold_angle =  -threshold_angle;
-		}
-		else{
-			std::cout << "vertex is concave "<< std::endl;
-			threshold_angle = 2*M_PI - threshold_angle;
-		}
+		std::cout << "vertex is concave "<< std::endl;
+		threshold_angle = 2*M_PI + threshold_angle;
 	}
+	
 	
 	std::cout << "threshold_angle2 " << threshold_angle << std::endl;	
 	
@@ -352,7 +360,7 @@ std::vector<int> Visibility_Graph::visible_indices_polar(int index_in){
 	for(int i=0; i < external_complex.size(); i++ ){
 		if(i != index_in){
 			std::complex<float> current_relative = external_complex[i] - external_complex[index_in];
-			current_relative =  current_relative / reference_vector;
+			current_relative =  current_relative / next_vector;
 			float current_angle = std::arg(current_relative);
 			
 			if (current_angle < 0){
@@ -360,7 +368,7 @@ std::vector<int> Visibility_Graph::visible_indices_polar(int index_in){
 			}
 				
 			
-			if( current_angle < threshold_angle ){
+			if( current_angle <= threshold_angle ){
 			
 				relative_position.push_back( current_relative );
 				std::pair<float, int> index_map(current_angle, i);
@@ -375,7 +383,7 @@ std::vector<int> Visibility_Graph::visible_indices_polar(int index_in){
 	std::set<int> visible_lines_start;
 	
 	std::cout << "the first visible is vertex "<< next_index << " comes from the line starting in " <<  index_in << std::endl;
-	visible_lines_start.insert(next_index);
+	visible_lines_start.insert(index_in);
 	
 
 	
@@ -387,25 +395,33 @@ std::vector<int> Visibility_Graph::visible_indices_polar(int index_in){
 		std::cout << "ordered angle " << map_iter->first <<" with index "<< map_iter->second  << std::endl;
 //		std::cout << "visible_lines_start.size()  " << visible_lines_start.size()  << std::endl;
 
+		int previous_current_index = (current_index==0) ? external_contour.size()-1 : current_index-1;
+		int next_current_index = (current_index==(external_contour.size()-1)) ? 0 : current_index+1;
 
 		if(is_visible (index_in, current_index, visible_lines_start)){
 			index_visible.push_back(current_index);
 		}
 		
-//		std::cout << "The line visibles are ";
+		std::cout << "The line visibles are ";
 		std::vector <int> index_of_line_closed;
 		for (std::set<int>::iterator set_iter = visible_lines_start.begin(); set_iter != visible_lines_start.end(); set_iter++){
-//			std::cout << "  " << *set_iter;
-			if( ( current_index  == (1+*set_iter) ) ){
-	//			std::cout << "The index  " << current_index <<" close the line "<< current_index-1  << std::endl;
-				index_of_line_closed.push_back(current_index-1);
+			int line_begin = *set_iter;
+			int prev = (line_begin==0)? (external_contour.size()-1): (line_begin-1);
+			int next = (line_begin==(external_contour.size()-1) )? 0: (line_begin+1);
+			
+			std::cout << "  " << line_begin <<" to "<< next <<std::endl;
+			if( ( current_index  == next ) ){
+				std::cout << "    The index  " << current_index <<" close the line "<< previous_current_index  << std::endl;
+				index_of_line_closed.push_back(previous_current_index);
 			}
-			if( ( current_index  == (*set_iter -1) )  ){
-	//			std::cout << "The index  " << current_index <<" close the line "<< current_index+1  << std::endl;
-				index_of_line_closed.push_back(current_index+1);
+			if( ( current_index  == prev )  ){
+				std::cout << "    The index  " << current_index <<" close the line "<< next_current_index  << std::endl;
+				index_of_line_closed.push_back(next_current_index);
 			}
 		}
-		 std::cout << std::endl;
+		std::cout << std::endl;
+		 
+		 
 		 
 		// First case index close a line and open a new one
 		if(index_of_line_closed.size() == 1){
@@ -415,24 +431,30 @@ std::vector<int> Visibility_Graph::visible_indices_polar(int index_in){
 			}
 			else{
 				visible_lines_start.erase(index_of_line_closed[0]);
-				visible_lines_start.insert(current_index-1);
+				
+				visible_lines_start.insert(previous_current_index);
 			}
 		}
 		
 		//Second case, index is new and open two lines!
 		if(index_of_line_closed.size() == 0){		
 			visible_lines_start.insert(current_index);
-			visible_lines_start.insert(current_index-1);
+			visible_lines_start.insert(previous_current_index);
 		}
 		
 		
 		// Third case, index close two lines
 		if(index_of_line_closed.size() == 2){		
 			visible_lines_start.erase(current_index);
-			visible_lines_start.erase(current_index-1);
+			visible_lines_start.erase(previous_current_index);
 		}
 
-		
+		std::cout << "Lines after erasion ";
+		for (std::set<int>::iterator set_iter = visible_lines_start.begin(); set_iter != visible_lines_start.end(); set_iter++){
+			int line_begin = *set_iter;
+			std::cout << " "<< line_begin;
+		}
+		std::cout <<std::endl;
 
 	}
 	
@@ -459,7 +481,22 @@ bool Visibility_Graph::is_visible (int reference_index, int index, std::set<int>
 	
 	std::vector<float> distance2lines;
 	for(std::set<int>::iterator set_iter = visible_lines_start.begin(); set_iter != visible_lines_start.end();set_iter++){
+		
 		int index_start = *set_iter;
+		int index_next  = (index_start==(external_contour.size()-1))	? 0 : index_start+1;	
+		
+
+		std::cout << "Checkin line from "<< index_start << " to "<< index_next << std::endl;
+		bool point_visible = is_visible_point(reference_index, index, index_start, index_next);
+		if(!point_visible){
+//			return false;
+		}
+
+
+
+
+
+
 		std::complex<float> first_point = external_complex[ index_start ] - external_complex[reference_index] ;
 		std::complex<float> last_point = external_complex[ index_start +1]- external_complex[reference_index];
 		
@@ -468,6 +505,11 @@ bool Visibility_Graph::is_visible (int reference_index, int index, std::set<int>
 		
 		float angle_dif_poly = std::arg(     last_point/first_point);
 		float angle_dif_ref = std::arg(reference2index/first_point);
+
+
+		
+		
+		
 		
 //		std::cout << "visible line: " << index_start << ", " << index_start+1  << std::endl;
 //		std::cout << "angle in: " << angle_first << ", angle out: " << angle_last << " angle current: " << angle_reference << std::endl;
@@ -488,6 +530,61 @@ bool Visibility_Graph::is_visible (int reference_index, int index, std::set<int>
 
 
 
+bool Visibility_Graph::is_visible_point(int index_0, int index_1, int index_start, int index_next){
+	//equations are 
+	//x = x0*t0 + x1*(1-t0)
+	//y = y0*t0 + y1*(1-t0)
+	float x0 = external_complex[ index_0 ].real();
+	float y0 = external_complex[ index_0 ].imag();
+	float x1 = external_complex[ index_1 ].real();
+	float y1 = external_complex[ index_1 ].imag();
+
+	
+	//equations are 
+	//x = x2*t2 + x3*(1-t2)
+	//y = y2*t2 + y3*(1-t2)
+	float x2 = external_complex[ index_start ].real();
+	float y2 = external_complex[ index_start ].imag();
+	float x3 = external_complex[ index_next ].real();
+	float y3 = external_complex[ index_next ].imag();
+
+	//Solve system 
+	//a*t0 + b*t2 = c
+	//d*t0 + e*t2 = f
+	//	t0 = (af - cd)/(ae - bd)
+	// 	t1 = (bf - ce)/(ae - bd)
+	
+	float a= x0-x1;
+	float b= x3-x2;
+	float c= x3-x1;
+	
+	float d= y0-y1;
+	float e= y3-y2;	
+	float f= y3-y1;
+
+	float	t0 = 1-(a*f - c*d)/(a*e - b*d);
+	float 	t1 = (b*f - c*e)/(a*e - b*d);
+
+	std::cout << "t0: " << t0 << ",  t1: "<< t1 <<std::endl;
+
+
+	if(  (t0 >=1) && (t1>=0) && (t1<= 1) ){
+		std::cout << "it is visible" << std::endl;
+		return true;
+	}
+	else{
+		std::cout << "it is ocluded" << std::endl;
+	}
+
+	
+	return false;
+}
+
+
+
+
+
+
 
 
 
@@ -503,7 +600,7 @@ void Visibility_Graph::decompose(){
 		printf("Already decomposed\n");
 	}
 	else{
-		detect_convave_points();
+//		detect_convave_points();
 		
 		
 		

@@ -13,6 +13,7 @@ class Visibility_Graph{
 	public:
 		Visibility_Graph();
 		void write_contour(std::vector<std::vector<cv::Point> > contour_in);
+		void make_clockwise();
 		void decompose();
 		std::vector<cv::Point> read_concave_points();
 		
@@ -24,13 +25,16 @@ class Visibility_Graph{
 	
 	private:
 		bool decomposed;
-		std::vector<std::vector<cv::Point> > vector_of_contours;
 		std::vector<cv::Point> external_contour;
+		std::vector<std::complex<float> > external_complex;
+		
 		std::vector<std::vector<cv::Point> > set_of_holes;
+		std::vector < std::vector<std::complex<float> > > hole_set_complex;
+
 		std::vector<int> concave_points_indices;
 		cv::Mat Oclusion_Adjacency;
-		
-		std::vector<std::complex<float> > external_complex;
+		int number_of_points;
+
 		
 
 
@@ -41,4 +45,5 @@ class Visibility_Graph{
 		std::vector< std::pair<int,int> > check_visibility_through_concave_vertex(int index);
 		std::vector<int> visible_indices_polar(int index_in);
 		bool is_visible (int reference_index, int index, std::set<int> visible_lines_start);
+		bool is_visible_point(int index_0, int index_1, int index_start, int index_next);
 };
