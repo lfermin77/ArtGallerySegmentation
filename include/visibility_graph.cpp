@@ -58,6 +58,29 @@ std::vector<cv::Point> Visibility_Graph::read_concave_points(){
 	}
 }
 
+
+
+void Visibility_Graph::write_contour(std::vector<std::vector<cv::Point> > contour_in){
+	vector_of_contours = contour_in;
+	external_contour = contour_in[0];
+	int number_of_points = contour_in[0].size();
+
+	for(int i=0;i<external_contour.size();i++){
+		std::complex<float> current_point( external_contour[i].x, external_contour[i].y  );
+		external_complex.push_back(current_point);
+	}
+
+	
+	//~ for(int i=1; i< contour_in.size(); i++){
+		//~ if(contour_in[i].size() > 2){
+			//~ set_of_holes.push_back(contour_in[i]);
+			//~ number_of_points += contour_in[i].size();
+		//~ }
+	//~ }
+	Oclusion_Adjacency = cv::Mat::zeros(number_of_points, number_of_points, CV_32SC1);
+	decomposed=false;
+}
+
 std::vector< std::pair<cv::Point, cv::Point> > Visibility_Graph::extract_Lines(){
 	std::vector< std::pair<cv::Point, cv::Point> > Lines;
 
@@ -107,29 +130,6 @@ std::vector< std::pair<cv::Point, cv::Point> > Visibility_Graph::extract_Lines()
 	
 	return Lines;
 }
-
-
-void Visibility_Graph::write_contour(std::vector<std::vector<cv::Point> > contour_in){
-	vector_of_contours = contour_in;
-	external_contour = contour_in[0];
-	int number_of_points = contour_in[0].size();
-
-	for(int i=0;i<external_contour.size();i++){
-		std::complex<float> current_point( external_contour[i].x, external_contour[i].y  );
-		external_complex.push_back(current_point);
-	}
-
-	
-	//~ for(int i=1; i< contour_in.size(); i++){
-		//~ if(contour_in[i].size() > 2){
-			//~ set_of_holes.push_back(contour_in[i]);
-			//~ number_of_points += contour_in[i].size();
-		//~ }
-	//~ }
-	Oclusion_Adjacency = cv::Mat::zeros(number_of_points, number_of_points, CV_32SC1);
-	decomposed=false;
-}
-
 
 
 
@@ -290,6 +290,8 @@ std::vector< std::pair<int,int> > Visibility_Graph::check_visibility_through_con
 std::vector<int> Visibility_Graph::visible_indices_polar(int index_in){
 	std::vector<int> index_visible;
 
+	int orientation;
+
 	int previous_index = (index_in==0)								? external_contour.size()-1 : index_in-1;
 	int next_index     = (index_in==(external_contour.size()-1))	? 0 : index_in+1;	
 
@@ -298,14 +300,49 @@ std::vector<int> Visibility_Graph::visible_indices_polar(int index_in){
 	std::vector<std::complex<float> > relative_position;
 	std::complex<float> next_vector     = external_complex[    next_index] - external_complex[index_in];
 	std::complex<float> previous_vector = external_complex[previous_index] - external_complex[index_in];
-	next_vector /= std::abs(next_vector);
+
 	
-	float threshold_angle= std::arg(previous_vector/next_vector);
-	if (threshold_angle < 0){
-		threshold_angle = M_PI- threshold_angle;
-	}
+	float threshold_angle = std::arg(previous_vector/next_vector) ;
 			
 	std::cout << "threshold_angle " << threshold_angle << std::endl;
+	
+	
+	std::complex<float> reference_vector;
+	
+	
+	
+	/////////////////////////////
+	if(   cv::contourArea(external_contour, true) >0){
+		std::cout << "contour is clockwise "<< std::endl;
+		orientation=1;
+		reference_vector = next_vector;
+		
+		if(threshold_angle >0){
+			std::cout << "vertex is convex "<< std::endl;
+		}
+		else{
+			std::cout << "vertex is concave "<< std::endl;
+			threshold_angle = 2*M_PI- threshold_angle;
+		}
+	}
+	else{
+		std::cout << "contour is counter-clockwise "<< std::endl;
+		orientation=-1;
+		reference_vector = previous_vector;
+		
+		if(threshold_angle <0){
+			std::cout << "vertex is convex "<< std::endl;			
+			threshold_angle =  -threshold_angle;
+		}
+		else{
+			std::cout << "vertex is concave "<< std::endl;
+			threshold_angle = 2*M_PI - threshold_angle;
+		}
+	}
+	
+	std::cout << "threshold_angle2 " << threshold_angle << std::endl;	
+	
+	
 	
 	
 	std::vector<float> angles;
@@ -315,15 +352,12 @@ std::vector<int> Visibility_Graph::visible_indices_polar(int index_in){
 	for(int i=0; i < external_complex.size(); i++ ){
 		if(i != index_in){
 			std::complex<float> current_relative = external_complex[i] - external_complex[index_in];
-			current_relative =  current_relative / next_vector;
+			current_relative =  current_relative / reference_vector;
 			float current_angle = std::arg(current_relative);
 			
 			if (current_angle < 0){
-				current_angle = M_PI- current_angle;
+				current_angle = 2*M_PI + current_angle;
 			}
-			
-			
-//			if(threshold_angle > 0){
 				
 			
 			if( current_angle < threshold_angle ){
@@ -352,9 +386,11 @@ std::vector<int> Visibility_Graph::visible_indices_polar(int index_in){
 		int current_index = map_iter->second;
 		std::cout << "ordered angle " << map_iter->first <<" with index "<< map_iter->second  << std::endl;
 //		std::cout << "visible_lines_start.size()  " << visible_lines_start.size()  << std::endl;
-//		if(is_visible (index_in, current_index, visible_lines_start)){
+
+
+		if(is_visible (index_in, current_index, visible_lines_start)){
 			index_visible.push_back(current_index);
-//		}
+		}
 		
 //		std::cout << "The line visibles are ";
 		std::vector <int> index_of_line_closed;

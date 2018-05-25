@@ -65,8 +65,8 @@ int main(int argc, char** argv )
     
     
     //Show Image    
-//	cv::namedWindow("Display Image", cv::WINDOW_AUTOSIZE );
-    cv::imshow("Image from Polygon", dst);
+	cv::namedWindow("Image_from_Polygon", cv::WINDOW_AUTOSIZE );
+    cv::imshow("Image_from_Polygon", dst);
     cv::waitKey(0);
 
     return 0;
