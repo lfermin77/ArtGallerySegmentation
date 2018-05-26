@@ -126,8 +126,8 @@ std::vector< std::pair<cv::Point, cv::Point> > Visibility_Graph::extract_Lines()
 		//~ }
 	//~ }
 
-//	for(int i=0; i< external_contour.size();i++){
-	{int i=1;
+	for(int i=0; i< external_contour.size();i++){
+//	{int i=2;
 //		std::vector<int> visibles_index2 = visible_indices_polar(concave_points_indices[0]);
 		std::vector<int> visibles_index2 = visible_indices_polar(i);
 		for(int j=0; j < visibles_index2.size(); j++){
@@ -331,14 +331,7 @@ std::vector<int> Visibility_Graph::visible_indices_polar(int index_in){
 
 	//Find threshold
 	float threshold_angle = std::arg(previous_vector/next_vector) ;	
-	if(threshold_angle >0){
-		std::cout << "vertex is convex "<< std::endl;
-	}
-	else{
-		std::cout << "vertex is concave "<< std::endl;
-		threshold_angle = 2*M_PI + threshold_angle;
-	}
-		
+	threshold_angle = (threshold_angle>0) ? threshold_angle: 2*M_PI+threshold_angle;	
 	std::cout << "threshold_angle " << threshold_angle << std::endl;	
 	
 	
@@ -346,8 +339,6 @@ std::vector<int> Visibility_Graph::visible_indices_polar(int index_in){
 	// Order the set of angles
 	std::vector<float> angles;
 	std::multimap<float,int> angle2indices;
-
-
 	for(int i=0; i < external_complex.size(); i++ ){
 		if(i != index_in){
 			std::complex<float> current_relative = external_complex[i] - external_complex[index_in];
@@ -374,12 +365,17 @@ std::vector<int> Visibility_Graph::visible_indices_polar(int index_in){
 	
 	//Find the set of lines
 	std::set<int> visible_lines_start;
-	
+	std::set<int> possible_lines;
+	for(int j=1; j < (external_complex.size()-1);j++){
+		int circular_index = (index_in + j)%external_complex.size();
+		possible_lines.insert(circular_index);
+	}
 	
 	std::cout << "the first visible is vertex "<< next_index << " comes from the line starting in " <<  index_in << std::endl;
 //	visible_lines_start.insert(index_in);
 	visible_lines_start.insert(next_index);
 
+	visible_lines_start=possible_lines;
 	
 	std::multimap<float,int>::iterator map_iter = angle2indices.begin();
 	map_iter ++;
@@ -387,14 +383,14 @@ std::vector<int> Visibility_Graph::visible_indices_polar(int index_in){
 		int current_index = map_iter->second;
 		std::cout << "ordered angle " << map_iter->first <<" with index "<< map_iter->second  << std::endl;
 
-		int previous_current_index = (current_index==0) ? external_contour.size()-1 : current_index-1;
-		int next_current_index = (current_index==(external_contour.size()-1)) ? 0 : current_index+1;
+		int previous_current_index = (current_index==0)   ? external_contour.size()-1 : current_index-1;
+		int next_current_index     = (current_index==(external_contour.size()-1)) ? 0 : current_index+1;
 
 		if(is_visible (index_in, current_index, visible_lines_start))
 		{
 			index_visible.push_back(current_index);
 		}
-		//*
+		/*
 		std::cout << "The line visibles are ";
 		std::vector <int> index_of_line_closed;
 		for (std::set<int>::iterator set_iter = visible_lines_start.begin(); set_iter != visible_lines_start.end(); set_iter++){
@@ -473,51 +469,19 @@ bool Visibility_Graph::is_visible (int reference_index, int index, std::set<int>
 	std::complex<float> reference2index = external_complex[index] - external_complex[reference_index];
 	float angle_reference = std::arg(reference2index);
 	
-	std::vector<float> distance2lines;
 	for(std::set<int>::iterator set_iter = visible_lines_start.begin(); set_iter != visible_lines_start.end();set_iter++){
 		
 		int index_start = *set_iter;
 		int index_next  = (index_start==(external_contour.size()-1))	? 0 : index_start+1;	
 		
-
-		std::cout << "Checkin line from "<< index_start << " to "<< index_next << std::endl;
+		std::cout << "Checkin against line from "<< index_start << " to "<< index_next << std::endl;
 		bool point_visible = is_visible_point(reference_index, index, index_start, index_next);
 		if(!point_visible){
+				std::cout << "The vertex from "<< reference_index << " to "<< index << " is ocluded" << std::endl << std::endl;
 			return false;
 		}
-
-
-
-
-
-
-
-
-
-		std::complex<float> first_point = external_complex[ index_start ] - external_complex[reference_index] ;
-		std::complex<float> last_point = external_complex[ index_start +1]- external_complex[reference_index];
-		
-		float angle_first = std::arg(first_point);
-		float angle_last = std::arg(last_point);
-		
-		float angle_dif_poly = std::arg(     last_point/first_point);
-		float angle_dif_ref = std::arg(reference2index/first_point);
-
-		
-//		std::cout << "visible line: " << index_start << ", " << index_start+1  << std::endl;
-//		std::cout << "angle in: " << angle_first << ", angle out: " << angle_last << " angle current: " << angle_reference << std::endl;
-		
-		if (  ( (angle_dif_poly >= 0)&&(angle_dif_ref <= angle_dif_poly) )   ||    ( (angle_dif_poly <= 0)&&(angle_dif_ref > angle_dif_poly) )    ){
-//		if (  ( (angle_reference <= angle_last)&&(angle_reference >= angle_first) )   ||    ((angle_reference >= angle_last)&&(angle_reference <= angle_first) )    ){
-
-			if( ( std::abs(reference2index) > std::abs(first_point) ) && ( std::abs(reference2index) > std::abs(last_point) )  ){
-//				std::cout << "it is occluded" << std::endl;
-//				return false;
-			}
-		}
-
 	}
-	
+	std::cout << "The vertex from "<< reference_index << " to "<< index << " is visible" << std::endl << std::endl;
 	return true;
 }
 
@@ -525,7 +489,7 @@ bool Visibility_Graph::is_visible (int reference_index, int index, std::set<int>
 
 bool Visibility_Graph::is_visible_point(int index_0, int index_1, int index_start, int index_next){
 
-	std::cout << "Checkin vector from "<< index_0 << " to "<< index_1 << " with line from "<< index_start << " to "<< index_next << std::endl;
+	//~ std::cout << "Checkin vector from "<< index_0 << " to "<< index_1 << " with line from "<< index_start << " to "<< index_next << std::endl;
 	//equations are 
 	//x = x0*(1-t0) + x1*(t0)
 	//y = y0*(1-t0) + y1*(t0)
@@ -560,22 +524,23 @@ bool Visibility_Graph::is_visible_point(int index_0, int index_1, int index_star
 	float 	t0 = (c*e - f*b)/(a*e - b*d);
 	float	t2 = (a*f - c*d)/(a*e - b*d) ;
 	
-	std::cout << "t0: " << t0 << ",  t2: "<< t2 <<std::endl;
+	//~ std::cout << "t0: " << t0 << ",  t2: "<< t2 <<std::endl;
 
 
 	if(  (t2>=0) && (t2<= 1) ){
-		std::cout << "    intersection inside line" << std::endl;
-		if (t0 >= 1){
-			std::cout << "it is visible" << std::endl;
-			return true;
+		//~ std::cout << "    intersection inside line" << std::endl;
+		if ((t0<=0) || (t0 >= 1)){
+			//~ std::cout << "it is visible" << std::endl;
+ 			return true;
 		}
 		else{
-			std::cout << "it is ocluded" << std::endl;
+			//~ std::cout << "it is ocluded" << std::endl;
+				std::cout << "t0: " << t0 << ",  t2: "<< t2 <<std::endl;
 			return false;
 		}
 	}
 	else{
-		std::cout << "    intersection outside line" << std::endl;
+		//~ std::cout << "    intersection outside line" << std::endl;
 		return true;
 	}
 
