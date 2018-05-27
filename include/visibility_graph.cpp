@@ -24,7 +24,7 @@ std::ostream& operator<<(std::ostream& os, Visibility_Graph vis){
 	cv::Size vis_size = vis.Oclusion_Adjacency.size();
 	for(int i=0;i < vis_size.width; i++ ){
 		for(int j=0;j < vis_size.height; j++ ){
-			os << vis.Oclusion_Adjacency.at<int>(cv::Point(i,j) ) << " ";
+			os << vis.Oclusion_Adjacency.at<float>(cv::Point(i,j) ) << " ";
 		}
 		os << "\n";
 	}
@@ -70,7 +70,11 @@ void Visibility_Graph::write_contour(std::vector<std::vector<cv::Point> > contou
 		external_complex.push_back(current_point);
 	}
 
-	Oclusion_Adjacency = cv::Mat::zeros(number_of_points, number_of_points, CV_32SC1);
+	Oclusion_Adjacency = cv::Mat::zeros(number_of_points, number_of_points, CV_32FC1);
+	
+	//~ cv::Mat conMat(external_contour.size(), 2, CV_32FC1);
+	//~ Oclusion_Adjacency = conMat
+	
 	
 	for(int i=1; i< contour_in.size(); i++){
 		std::vector<cv::Point> current_contour = contour_in[i];
@@ -93,18 +97,30 @@ void Visibility_Graph::write_contour(std::vector<std::vector<cv::Point> > contou
 
 void Visibility_Graph::make_clockwise(){
 	//Fix external
-	if( cv::contourArea(external_contour, true)< 0){
+	std::cout << "Fixing external " << std::endl;
+	
+	cv::Mat conMat(external_contour.size(), 2, CV_32FC1);
+	for(int i = 0; i < external_contour.size(); i ++)
+	{
+	     conMat.at<float>(i, 0) = external_contour[i].x;
+	     conMat.at<float>(i, 1) = external_contour[i].y;
+	}    
+	float external_area = cv::contourArea(conMat, true);
+	
+	
+	if( external_area< 0){
 		std::reverse(external_contour.begin(),external_contour.end()); 
 		std::reverse(external_complex.begin(),external_complex.end());
 	}
 	
-	// Fix Holes
-	for(int i=0; set_of_holes.size();i++){
-		if( cv::contourArea(set_of_holes[i], true)< 0){
-			std::reverse(set_of_holes[i].begin(),set_of_holes[i].end()); 
-			std::reverse(hole_set_complex[i].begin(),hole_set_complex[i].end()); 
-		}
-	}
+	//~ // Fix Holes
+	//~ for(int i=0; set_of_holes.size();i++){
+		//~ if( cv::contourArea(set_of_holes[i], true)< 0){
+			//~ std::reverse(set_of_holes[i].begin(),set_of_holes[i].end()); 
+			//~ std::reverse(hole_set_complex[i].begin(),hole_set_complex[i].end()); 
+			//~ std::cout << "Hole "<< i << " fixed " << std::endl;
+		//~ }
+	//~ }
 	
 }
 
@@ -154,8 +170,17 @@ std::vector< std::pair<cv::Point, cv::Point> > Visibility_Graph::extract_Lines()
 		//~ }
 	//~ }
 	
+	for(int i=0;i < number_of_points; i++){
+		int sum=0;
+		for(int j=0; j<number_of_points;j++){
+			sum += Oclusion_Adjacency.at<float>(cv::Point(i, j));
+		}
+		Oclusion_Adjacency.at<float>(cv::Point(i, i)) = -sum;
+	}
+
 	
-	
+	cv::Mat eigen_values;
+	cv::eigen(Oclusion_Adjacency, eigen_values );
 	
 	return Lines;
 }
@@ -200,8 +225,8 @@ std::vector<int> Visibility_Graph::indices_of_visible(int index_in){
 		bool at_left  = detect_concave_triplet(external_contour[index_in], external_contour[next_index], 	 external_contour[round_index]);
 		
 		if (!at_right && at_left){
-			Oclusion_Adjacency.at<int>(cv::Point(index_in, round_index))=1;
-			Oclusion_Adjacency.at<int>(cv::Point(round_index, index_in))=1;
+			Oclusion_Adjacency.at<float>(cv::Point(index_in, round_index))=-1;
+			Oclusion_Adjacency.at<float>(cv::Point(round_index, index_in))=-1;
 //			index_visible.push_back(round_index);
 		}
 		else{
@@ -250,8 +275,8 @@ void Visibility_Graph::second_visibiliy(){
 			for(int k=0;k< j ;k++){
 				bool visible = detect_concave_triplet(external_contour[current_visible[j]], external_contour[current_concave_index], external_contour[ current_visible[k] ]);
 				if(visible){
-					Oclusion_Adjacency.at<int>(cv::Point(j,k))=1;
-					Oclusion_Adjacency.at<int>(cv::Point(k,j))=1;
+					Oclusion_Adjacency.at<float>(cv::Point(j,k))=1;
+					Oclusion_Adjacency.at<float>(cv::Point(k,j))=1;
 				}
 			}
 		}
@@ -292,8 +317,8 @@ std::vector< std::pair<int,int> > Visibility_Graph::check_visibility_through_con
 			//~ bool visible = detect_concave_triplet(external_contour[j], external_contour[current_index], external_contour[ next_index ]);
 			bool visible = detect_concave_triplet(external_contour[current_visible[j] ], external_contour[current_index], external_contour[ index_2_check ]);
 			if(visible){
-					Oclusion_Adjacency.at<int>(cv::Point(current_visible[j],index_2_check))=1;
-					Oclusion_Adjacency.at<int>(cv::Point(index_2_check,current_visible[j]))=1;
+					Oclusion_Adjacency.at<float>(cv::Point(current_visible[j],index_2_check))=1;
+					Oclusion_Adjacency.at<float>(cv::Point(index_2_check,current_visible[j]))=1;
 					std::cout << "     the pair ocluded is: "<< current_visible[j] <<" , " << index_2_check << std::endl;
 					std::pair<int,int> visible_pair(current_visible[j], index_2_check);
 					ocluded_lines.push_back(visible_pair);
@@ -332,7 +357,7 @@ std::vector<int> Visibility_Graph::visible_indices_polar(int index_in){
 	//Find threshold
 	float threshold_angle = std::arg(previous_vector/next_vector) ;	
 	threshold_angle = (threshold_angle>0) ? threshold_angle: 2*M_PI+threshold_angle;	
-	std::cout << "threshold_angle " << threshold_angle << std::endl;	
+	//~ std::cout << "threshold_angle " << threshold_angle << std::endl;	
 	
 	
 	
@@ -358,7 +383,7 @@ std::vector<int> Visibility_Graph::visible_indices_polar(int index_in){
 				angle2indices.insert( index_map);
 
 			}
-			std::cout <<"index "<< i<< " has unordered angle " << current_angle << std::endl;
+			//~ std::cout <<"index "<< i<< " has unordered angle " << current_angle << std::endl;
 		}
 	}
 	
@@ -371,7 +396,7 @@ std::vector<int> Visibility_Graph::visible_indices_polar(int index_in){
 		possible_lines.insert(circular_index);
 	}
 	
-	std::cout << "the first visible is vertex "<< next_index << " comes from the line starting in " <<  index_in << std::endl;
+	//~ std::cout << "the first visible is vertex "<< next_index << " comes from the line starting in " <<  index_in << std::endl;
 //	visible_lines_start.insert(index_in);
 	visible_lines_start.insert(next_index);
 
@@ -381,13 +406,15 @@ std::vector<int> Visibility_Graph::visible_indices_polar(int index_in){
 	map_iter ++;
 	for( ; map_iter != angle2indices.end(); map_iter ++ ){
 		int current_index = map_iter->second;
-		std::cout << "ordered angle " << map_iter->first <<" with index "<< map_iter->second  << std::endl;
+		//~ std::cout << "ordered angle " << map_iter->first <<" with index "<< map_iter->second  << std::endl;
 
 		int previous_current_index = (current_index==0)   ? external_contour.size()-1 : current_index-1;
 		int next_current_index     = (current_index==(external_contour.size()-1)) ? 0 : current_index+1;
 
 		if(is_visible (index_in, current_index, visible_lines_start))
 		{
+			Oclusion_Adjacency.at<float>(cv::Point(index_in, current_index) )=-1;
+			Oclusion_Adjacency.at<float>(cv::Point(current_index, index_in) )=-1;
 			index_visible.push_back(current_index);
 		}
 		/*
@@ -474,14 +501,14 @@ bool Visibility_Graph::is_visible (int reference_index, int index, std::set<int>
 		int index_start = *set_iter;
 		int index_next  = (index_start==(external_contour.size()-1))	? 0 : index_start+1;	
 		
-		std::cout << "Checkin against line from "<< index_start << " to "<< index_next << std::endl;
+		//~ std::cout << "Checkin against line from "<< index_start << " to "<< index_next << std::endl;
 		bool point_visible = is_visible_point(reference_index, index, index_start, index_next);
 		if(!point_visible){
-				std::cout << "The vertex from "<< reference_index << " to "<< index << " is ocluded" << std::endl << std::endl;
+				//~ std::cout << "The vertex from "<< reference_index << " to "<< index << " is ocluded" << std::endl << std::endl;
 			return false;
 		}
 	}
-	std::cout << "The vertex from "<< reference_index << " to "<< index << " is visible" << std::endl << std::endl;
+	//~ std::cout << "The vertex from "<< reference_index << " to "<< index << " is visible" << std::endl << std::endl;
 	return true;
 }
 
@@ -535,7 +562,7 @@ bool Visibility_Graph::is_visible_point(int index_0, int index_1, int index_star
 		}
 		else{
 			//~ std::cout << "it is ocluded" << std::endl;
-				std::cout << "t0: " << t0 << ",  t2: "<< t2 <<std::endl;
+				//~ std::cout << "t0: " << t0 << ",  t2: "<< t2 <<std::endl;
 			return false;
 		}
 	}
