@@ -18,6 +18,7 @@ class Visibility_Graph{
 		std::vector<cv::Point> read_concave_points();
 		
 		std::vector< std::pair<cv::Point, cv::Point> > extract_Lines();
+		std::vector<cv::Point> guard_points();
 		
 		friend std::ostream& operator<<(std::ostream& os, Visibility_Graph vis);
 

@@ -37,8 +37,13 @@ int main(int argc, char** argv )
     vis_graph.write_contour(reduced_contour);
     vis_graph.make_clockwise();
     vis_graph.decompose();
-    std::vector<cv::Point> concave_points = vis_graph.read_concave_points();
+//    std::vector<cv::Point> concave_points = vis_graph.read_concave_points();
+
+    
     std::vector< std::pair<cv::Point, cv::Point> > lines = vis_graph.extract_Lines();
+    
+    std::vector<cv::Point> guard_points = vis_graph.guard_points();
+    
     std::cout << vis_graph;
 
     
@@ -54,14 +59,17 @@ int main(int argc, char** argv )
         drawContours( dst, reduced_contour, idx, color, -1, 8, hierarchy_vector );
 	}
 		//Draw Circles
-	for(int i=0; i< concave_points.size();i++){
-		cv::circle(dst, concave_points[i], 3, cv::Scalar( 0, 0, 255), -1);
+	//~ for(int i=0; i< concave_points.size();i++){
+		//~ cv::circle(dst, concave_points[i], 3, cv::Scalar( 0, 0, 255), -1);
+	//~ }
+	for(int i=0; i< guard_points.size();i++){
+		cv::circle(dst, guard_points[i], 3, cv::Scalar( 0, 0, 255), -1);
 	}
 		//Draw Lines
-	for(int i=0; i< lines.size();i++){
-		cv::line(dst, lines[i].first, lines[i].second, cv::Scalar( 0, 0, 255), 1);
-	}
-		
+	//~ for(int i=0; i< lines.size();i++){
+		//~ cv::line(dst, lines[i].first, lines[i].second, cv::Scalar( 0, 0, 255), 1);
+	//~ }
+		//~ 
 		
     
     

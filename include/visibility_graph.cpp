@@ -64,6 +64,7 @@ void Visibility_Graph::write_contour(std::vector<std::vector<cv::Point> > contou
 	external_contour = contour_in[0];
 	number_of_points = contour_in[0].size();
 	
+	std::cout << "number_of_points " << number_of_points << std::endl;
 
 	for(int i=0;i<external_contour.size();i++){
 		std::complex<float> current_point( external_contour[i].x, external_contour[i].y  );
@@ -88,7 +89,7 @@ void Visibility_Graph::write_contour(std::vector<std::vector<cv::Point> > contou
 			}
 			hole_set_complex.push_back(hole_complex);
 			
-			number_of_points += contour_in[i].size();
+//			number_of_points += contour_in[i].size();
 		}
 	}
 	decomposed=false;
@@ -171,20 +172,43 @@ std::vector< std::pair<cv::Point, cv::Point> > Visibility_Graph::extract_Lines()
 	//~ }
 	
 	for(int i=0;i < number_of_points; i++){
-		int sum=0;
+		float sum=0;
 		for(int j=0; j<number_of_points;j++){
-			sum += Oclusion_Adjacency.at<float>(cv::Point(i, j));
+			if(Oclusion_Adjacency.at<float>(cv::Point(i, j)) == -1){
+				sum++;
+			}
 		}
-		Oclusion_Adjacency.at<float>(cv::Point(i, i)) = -sum;
+		Oclusion_Adjacency.at<float>(cv::Point(i, i)) = sum;
 	}
+	
 
-	
-	cv::Mat eigen_values;
-	cv::eigen(Oclusion_Adjacency, eigen_values );
-	
 	return Lines;
 }
 
+
+
+std::vector<cv::Point> Visibility_Graph::guard_points(){
+
+	
+	cv::Mat eigen_values, eigen_vectors;
+	cv::eigen(Oclusion_Adjacency, eigen_values, eigen_vectors);
+
+//	std::cout << "Eigen_values " << eigen_values << ", eigen_vectors" << s << std::endl;
+	
+	cv::Size s = eigen_vectors.size();
+	int rows = s.height;
+	int cols = s.width;
+	
+//	std::vector<int> guards;
+	std::vector<cv::Point> guards;
+	for(int i=0; i < rows; i++){
+		float value = eigen_vectors.at<float>( cv::Point(0,i) );
+		if(value >=0){
+			guards.push_back(external_contour[i]);
+		}
+	}
+	return guards;
+}
 
 
 	// Private Functions
