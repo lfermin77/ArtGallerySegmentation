@@ -44,7 +44,7 @@ int main(int argc, char** argv )
     
     std::vector<cv::Point> guard_points = vis_graph.guard_points();
     
-    std::cout << vis_graph;
+//    std::cout << vis_graph;
 
     
     //Draw Image
@@ -74,7 +74,7 @@ int main(int argc, char** argv )
     
     
     //Show Image    
-	cv::namedWindow("Image_from_Polygon", cv::WINDOW_AUTOSIZE );
+	cv::namedWindow("Image_from_Polygon", cv::WINDOW_NORMAL );
     cv::imshow("Image_from_Polygon", dst);
     cv::waitKey(0);
 

@@ -193,20 +193,24 @@ std::vector<cv::Point> Visibility_Graph::guard_points(){
 	cv::Mat eigen_values, eigen_vectors;
 	cv::eigen(Oclusion_Adjacency, eigen_values, eigen_vectors);
 
-//	std::cout << "Eigen_values " << eigen_values << ", eigen_vectors" << s << std::endl;
+
 	
 	cv::Size s = eigen_vectors.size();
 	int rows = s.height;
 	int cols = s.width;
+	std::cout << "Eigen_values " << eigen_values << ", eigen_vectors" << s << std::endl;
 	
 //	std::vector<int> guards;
 	std::vector<cv::Point> guards;
+	std::cout << "Eigen_vectors [ ";
 	for(int i=0; i < rows; i++){
 		float value = eigen_vectors.at<float>( cv::Point(0,i) );
-		if(value >=0){
+		std::cout << " " <<value;
+		if(value >=1e-6){
 			guards.push_back(external_contour[i]);
 		}
 	}
+	std::cout << " ] " << std::endl;
 	return guards;
 }
 
